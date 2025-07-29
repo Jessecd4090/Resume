@@ -16,9 +16,7 @@ struct Percent: Decodable, Equatable {
     */
 
     // Copy the data in my models to match the json exactly, or use coding keys
-    
     var description: String
-    // This needs to be a float not an Int
     var percentValue: Float
     var backColor: String
     var foreColor: String

@@ -8,10 +8,6 @@
 import SwiftUI
 
 struct ContentView: View {
-    enum loadingErrors: LocalizedError, Error {
-        case invalidFileName
-        case invalidData
-    }
     @State var viewModel = JsonViewModel()
     @State var currentSelection: Percent = Percent(
         description: "Fake",
@@ -23,130 +19,89 @@ struct ContentView: View {
                 // This is the sideBar
             if viewModel.percents.isEmpty {
                 ProgressView()
-//                    .onAppear(perform: {
-//                        currentSelection = viewModel.percents[0]
-//                    })
                     .task {
                         do {
                             defer {
                                 currentSelection = viewModel.percents[0]
                             }
-                            let loadedPercents = try await loadPercents(fileName: "PercentData")
+                            let loadedPercents = try await viewModel.loadPercents(fileName: "PercentData")
                             viewModel.percents = loadedPercents
                         } catch {
                             print("Error loading items: \(error)")
                         }
                     }
-                
-                
-                
             } else {
                 List {
                     ForEach(viewModel.percents, id: \.percentValue) { percent in
                         GeometryReader { geometry in
-                            HStack {
-                                Text(percent.description)
-                                    .padding(.top, 5)
-                                    .padding(.leading, 5)
-                                    
-                                    .foregroundStyle(percent == currentSelection ? Color.white : Color.black)
-                                    // Still need to figure out the selection state for the texts
-                                
-                            }
+                            Text(percent.description)
+                                .frame(width: geometry.size.width - 8,
+                                    height: geometry.size.height, alignment: .leading)
+                                .padding(.leading, 5)
+                                .foregroundStyle(percent == currentSelection ? Color.white : Color.black)
+                                // Still need to figure out the selection state for the texts
+                                .background(content: {
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(percent == currentSelection ? Color.blue
+                                                    .mix(with: .black, by: 0.5)
+                                                    .opacity(0.9): Color.clear)
+                                    })
                         }
-                        .background(
-                            content: {
-                                RoundedRectangle(cornerRadius: 5)
-                                    .fill(
-                                        percent == currentSelection ? Color.blue
-                                            .mix(with: .black, by: 0.5)
-                                            .opacity(0.9): Color.clear
-                                    )
-                            })
                         .contentShape(Rectangle())
                         .onTapGesture {
                             currentSelection = percent
                             print(currentSelection)
                         }
-                        
-                        
-                        
                     }
                 }
             }
         } detail: {
                 // This is the detailView
             GeometryReader { geometry in
-                
+                    // DetailView Variables
+                let number = (currentSelection.percentValue * 100)
+                    .rounded()
+                let numInt = Int(number)
+                let backColor = Color.init(name: currentSelection.backColor)
+                let foreColor = Color.init(name: currentSelection.foreColor)
                 Text(currentSelection.description)
                     .font(.title)
                     .padding(.top, 20)
                     .padding(.leading, 10)
-                VStack {
-                    let color = Color.init(name: currentSelection.backColor)
-                        Circle()
-                            .size(
-                                width: geometry.size.width / 2,
-                                height: geometry.size
-                                    .height / 2)
-                            .fill(color ?? Color.clear)
-                            .padding(.leading, geometry.size.width / 4)
-                            .padding(.trailing, geometry.size.width / 4)
-                            .padding(.top, geometry.size.height / 4)
-                            .padding(.bottom, geometry.size.height / 4)
-                    
-                    
+                ZStack {
+                    // Background Circle
+                    Circle()
+                        .size(width: geometry.size.width / 2, height: geometry.size.height / 2)
+                        .fill(backColor?.opacity(0.6) ?? Color.clear)
+                        .padding(.leading, geometry.size.width / 4)
+                        .padding(.trailing, geometry.size.width / 4)
+                        .padding(.top, geometry.size.height / 4)
+                        .padding(.bottom, geometry.size.height / 4)
+                    // Foreground Circle
+                    Circle()
+                        .size(width: geometry.size.width / 2, height: geometry.size.height / 2)
+                        .trim(from: 0.0, to: min(CGFloat(currentSelection.percentValue), 1.0))
+                        .stroke(style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round))
+                        .fill(foreColor ?? Color.clear)
+                        .rotationEffect(.degrees(-90))
+                        .padding(.leading, geometry.size.width / 4)
+                        .padding(.trailing, geometry.size.width / 4)
+                        .padding(.top, geometry.size.height / 4)
+                        .padding(.bottom, geometry.size.height / 4)
+                    Label {
+                        Text("\(numInt)%")
+                            .font(.title2)
+                    } icon: {
+                        // Couldn't figure out how to get a label without an image or icon
+                        Text("")
+                    }
                 }
                 .navigationTitle("Percent Viewer")
             }
-            
-        }
-        
-        
-        
-        
-    }
-    func loadPercents(fileName: String) async throws -> [Percent] {
-        guard let url = Bundle.main.url(forResource: fileName, withExtension: "json") else {
-            throw loadingErrors.invalidFileName
-        }
-        do {
-            /* It is interesting that we don't recieve a response
-             here, but that makes sense given that we aren't reaching
-             to an API
-             */
-            let data = try Data(contentsOf: url)
-            print("Data Successfully Retrieved: \(data.count) bytes")
-            let percents = try JSONDecoder().decode([Percent].self, from: data)
-            print("Percents converted from jsonFile")
-            return percents
-        } catch {
-            throw loadingErrors.invalidData
         }
     }
-}
-@Observable
-class JsonViewModel {
-    var percents: [Percent] = []
 }
 
 #Preview {
     ContentView()
-}
-
-
-extension Color {
-    init?(name: String) {
-        switch name.lowercased() {
-        case "red": self = .red
-        case "green": self = .green
-        case "gray": self = .gray
-        case "orange": self = .orange
-        case "cyan": self = .cyan
-        case "yellow": self = .yellow
-        case "mint": self = .mint
-        // Add other cases as needed
-        default: return nil
-        }
-    }
 }
